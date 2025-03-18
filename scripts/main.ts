@@ -18,12 +18,15 @@ const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
+const defaultSpeed = 0.01;
+const sprintSpeed = 0.02;
+
 // Player properties
 const player: Player = {
     x: 2,
     y: 2,
     angle: 0,
-    speed: 0.01,
+    speed: defaultSpeed,
     turnSpeed: 0.05
 };
 
@@ -49,19 +52,6 @@ const map: number[][] = [
 const mapWidth: number = map[0].length;
 const mapHeight: number = map.length;
 
-// Create a simple texture for walls (checkerboard pattern)
-// const textureCanvas = document.createElement('canvas');
-// textureCanvas.width = 64;
-// textureCanvas.height = 64;
-// const textureCtx = textureCanvas.getContext('2d') as CanvasRenderingContext2D;
-// for (let y = 0; y < 64; y++) {
-//     for (let x = 0; x < 64; x++) {
-//         textureCtx.fillStyle = (x % 2 === y % 2) ? '#808080' : '#606060';
-//         textureCtx.fillRect(x, y, 1, 1);
-//     }
-// }
-// const wallTexture = new THREE.CanvasTexture(textureCanvas);
-
 // Floor and ceiling planes
 const floorGeometry = new THREE.PlaneGeometry(2, 2);
 const floorMaterial = new THREE.MeshBasicMaterial({ color: 0x404040 });
@@ -78,11 +68,39 @@ const screenWidth = window.innerWidth;
 const screenHeight = window.innerHeight;
 const fov = 75 * (Math.PI / 180);
 const rayCount = Math.floor(screenWidth / 2);
-const wallMaterial = new THREE.MeshBasicMaterial({ color: "red" });//({ mesh: textureCanvas });
+// const wallMaterial = new THREE.MeshLambertMaterial({ color: "red" });//({ mesh: textureCanvas });
+// Vertex shader
+const vertexShader = `
+    varying vec2 vUv;
+    void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+`;
+
+// Fragment shader
+const fragmentShader = `
+    uniform float colorValue;
+    varying vec2 vUv;
+    void main() {
+        vec3 vec_color = vec3(colorValue / 255.0, 0.0, 0.0);
+        gl_FragColor = vec4(vec_color, 1.0);
+    }
+`;
+
+// Create the shader material
+
 const wallGeometry = new THREE.PlaneGeometry(1 / rayCount, 1);
 const wallStrips: any[] = [];
 
 for (let i = 0; i < rayCount; i++) {
+    const wallMaterial = new THREE.ShaderMaterial({
+        vertexShader: vertexShader,
+        fragmentShader: fragmentShader,
+        uniforms: {
+            colorValue: { value: 1.0 }
+        }
+    });
     const wallStrip = new THREE.Mesh(wallGeometry, wallMaterial);
     wallStrip.position.z = -1;
     wallStrips.push(wallStrip);
@@ -261,18 +279,6 @@ function castRays(): void {
             distance = (mapY - player.y + (1 - stepY) / 2) / rayDirY;
         }
 
-        // const correctedDistance = distance * Math.cos(rayAngle - player.angle);
-        // const wallHeight = (screenHeight / correctedDistance);
-
-        // const wallStrip = wallStrips[i];
-        // wallStrip.scale.set(1, wallHeight, 1);
-        // wallStrip.position.set(
-        //     (i - rayCount / 2) / (rayCount / 2),
-        //     0,
-        //     -1
-        // );
-        // wallStrip.visible = true;
-
         // Store ray for minimap
         rays.push({
             x: mapX + (side === 0 ? (1 - stepX) / 2 : 0),
@@ -296,6 +302,12 @@ function updatePlayer(): void {
 
     let newX = player.x;
     let newY = player.y;
+
+    player.speed = defaultSpeed;
+
+    if (keys['Shift']) {
+        player.speed = sprintSpeed;
+    } 
 
     if (keys['w'] || keys['ArrowUp']) {
         newX += forwardX * player.speed;
@@ -323,6 +335,13 @@ function updatePlayer(): void {
     camera.rotation.y = 0;
 }
 
+// const light = new THREE.PointLight(0xffffff, 1, 100);
+// light.position.set(0, 1, 0);
+// scene.add(light);
+const normalizeBetweenTwoRanges = (val: number, minVal: number, maxVal: number, newMin: number, newMax: number): number => {
+    return newMin + (val - minVal) * (newMax - newMin) / (maxVal - minVal);
+};
+
 function renderWalls() {
     for (let i = 0; i < rayCount; i++) {
         const ray = rays[i];
@@ -338,8 +357,14 @@ function renderWalls() {
         );
         wallStrip.visible = true;
         wallStrip.position.z = -1;
-        scene.add(wallStrip);
+
+        const shadingFactor = normalizeBetweenTwoRanges(wallHeight, 0, screenHeight, 0, 255);
+        const colorValue = Math.floor(shadingFactor);
+        // console.log(colorValue / 255);
+        wallStrip.material.uniforms.colorValue.value = colorValue;
+        wallStrip.material.needsUpdate = true;
     }
+    // debugger;
 }
 
 function animate(): void {
