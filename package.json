@@ -1,0 +1,19 @@
+{
+  "name": "raycaster",
+  "version": "1.0.0",
+  "description": "",
+  "main": "./dist/main.js",
+  "types": "/dist/main.d.ts",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "watch": "tsc --watch"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/three": "^0.174.0",
+    "typescript": "^5.8.2"
+  }
+}
