@@ -2,18 +2,23 @@
   "name": "raycaster",
   "version": "1.0.0",
   "description": "",
-  "main": "./dist/main.js",
-  "types": "/dist/main.d.ts",
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc",
-    "watch": "tsc --watch"
+    "ts-build": "tsc",
+    "ts-watch": "tsc --watch",
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@types/three": "^0.174.0",
-    "typescript": "^5.8.2"
+    "three": "^0.174.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.2",
+    "vite": "^6.2.0"
   }
 }
